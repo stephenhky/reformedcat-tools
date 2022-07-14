@@ -6,7 +6,7 @@ import boto3
 from boto3.dynamodb.conditions import Key
 
 from reformedcatutils.biblebooks import numchaps, maxnbverses_dict
-# TODO: how to include one library in Lambda
+# ref: add lirary in AWS Lambda: https://wakeupcoders.medium.com/how-to-use-external-libraries-in-lambda-function-df1cee4a7c3a
 
 
 dynamodb_client = boto3.client('dynamodb')
