@@ -5,7 +5,7 @@ import re
 import boto3
 from boto3.dynamodb.conditions import Key
 
-from reformedcatutils.biblebooks import numchaps, maxnbverses_dict
+from reformedcatutils.biblebooks import BibleTriviaExtractor
 # ref: add lirary in AWS Lambda: https://wakeupcoders.medium.com/how-to-use-external-libraries-in-lambda-function-df1cee4a7c3a
 
 
@@ -29,13 +29,13 @@ def check_valid(book, startchapter, startverse, endchapter, endverse):
     assert startverse > 0
     assert endverse > 0
 
-    nbchaps = numchaps[book]
+    nbchaps = BibleTriviaExtractor.get_number_chapters(book)
     assert startchapter <= nbchaps
     assert endchapter <= nbchaps
     assert startchapter <= endchapter
 
-    assert startverse <= maxnbverses_dict[book][startchapter]
-    assert endverse <= maxnbverses_dict[book][endchapter]
+    assert startverse <= BibleTriviaExtractor.get_number_verses(book, startchapter)
+    assert endverse <= BibleTriviaExtractor.get_number_verses(book, endchapter)
     if startchapter == endchapter:
         assert startverse <= endverse
 
@@ -69,7 +69,7 @@ def lambda_handler(event, context):
             'book': book,
             'bookname': booknamedict[book]['fullname'],
             'bookabbr': booknamedict[book]['abbreviation'],
-            'verseref': '{}:{}'.format(chapter, verse) if numchaps[book] > 1 else '{}'.format(verse),
+            'verseref': '{}:{}'.format(chapter, verse) if BibleTriviaExtractor.get_number_chapters(book) > 1 else '{}'.format(verse),
             'chapter': chapter,
             'verse': verse,
             'text': text
@@ -87,24 +87,17 @@ def lambda_handler(event, context):
         endverse = query['endverse']
         check_valid(book, startchapter, startverse, endchapter, endverse)
 
-        # if startchapter == endchapter:
-        #     text = ' '.join([
-        #         retrieve_single_verse(book, startchapter, verse, translation=translation)
-        #         for verse in range(startverse, endverse+1)
-        #     ])
-        #     text = re.sub(r'\s+', ' ', text)
-        # else:
         verses = []
         for chapter in range(startchapter, endchapter+1):
             for verse in range(
                 1 if chapter > startchapter else startverse,
-                    (maxnbverses_dict[book][chapter]+1) if chapter < endchapter else (endverse+1)
+                    (BibleTriviaExtractor.get_number_verses(book, chapter)+1) if chapter < endchapter else (endverse+1)
             ):
                 verses.append(retrieve_single_verse(book, chapter, verse, translation=translation))
         text = ' '.join(verses)
         text = re.sub(r'\s+', ' ', text)
 
-        if numchaps[book] == 1:
+        if BibleTriviaExtractor.get_number_chapters(book) == 1:
             verseref = '{}-{}'.format(startverse, endverse)
         elif startchapter == endchapter:
             verseref = '{}:{}-{}'.format(startchapter, startverse, endverse)
